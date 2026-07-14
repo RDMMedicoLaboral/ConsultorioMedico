@@ -637,3 +637,72 @@ textarea {
     position: static;
   }
 }
+
+/* ---------- Recetas electrónicas ---------- */
+
+.rx-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 22px 0 10px;
+}
+
+.rx-modal {
+  max-width: 560px;
+}
+
+.rx-warning {
+  background: #fdf3e3;
+  border: 1px solid #ecd9b0;
+  padding: 8px 10px;
+  border-radius: 7px;
+  margin-top: -6px;
+}
+
+.rx-item-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rx-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+}
+
+.rx-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9rem;
+}
+
+.rx-item-sub {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin: 2px 0 8px;
+}
+
+.rx-item-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.rx-item-grid input {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.82rem;
+  width: 100%;
+}
+
+.rx-success {
+  padding: 10px 0;
+}

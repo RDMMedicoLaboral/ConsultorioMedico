@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import DiagnosisSearch from "./DiagnosisSearch.jsx";
+import PrescriptionModal from "./PrescriptionModal.jsx";
 
 const EMPTY_NOTE = {
   subjective: "",
@@ -32,9 +33,12 @@ function formatDateTime(iso) {
   });
 }
 
-export default function PatientRecord({ patientId, appointmentId, onBack }) {
+export default function PatientRecord({ patientId, appointmentId, onOpenDoctorProfile, onBack }) {
   const [patient, setPatient] = useState(null);
   const [history, setHistory] = useState([]);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [doctorReady, setDoctorReady] = useState(true);
+  const [showRxModal, setShowRxModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState(EMPTY_NOTE);
   const [saving, setSaving] = useState(false);
@@ -44,12 +48,16 @@ export default function PatientRecord({ patientId, appointmentId, onBack }) {
   async function load() {
     setLoading(true);
     try {
-      const [p, h] = await Promise.all([
+      const [p, h, rx, profile] = await Promise.all([
         api.patients.get(patientId),
         api.consultations.listByPatient(patientId),
+        api.prescriptions.listByPatient(patientId),
+        api.doctorProfile.get(),
       ]);
       setPatient(p);
       setHistory(h);
+      setPrescriptions(rx);
+      setDoctorReady(Boolean(profile.full_name));
     } finally {
       setLoading(false);
     }
@@ -182,6 +190,37 @@ export default function PatientRecord({ patientId, appointmentId, onBack }) {
               ))}
             </ol>
           )}
+          <div className="rx-section-header">
+            <h3 className="history-title" style={{ margin: 0 }}>
+              Recetas
+            </h3>
+            <button className="btn-primary sm" onClick={() => setShowRxModal(true)}>
+              + Nueva receta
+            </button>
+          </div>
+          {prescriptions.length === 0 ? (
+            <p className="hint">Aún no se han emitido recetas.</p>
+          ) : (
+            <ul className="history-list">
+              {prescriptions.map((rx) => (
+                <li key={rx.id} className="folder-card history-card">
+                  <div className="modal-tab" style={{ background: "#5B6B5F" }} />
+                  <div className="history-date">{formatDateTime(rx.created_at)}</div>
+                  <div className="history-field">
+                    {rx.items.map((it) => it.generic_name).join(", ")}
+                  </div>
+                  <a
+                    className="link-btn"
+                    href={api.prescriptions.pdfUrl(rx.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Ver PDF
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </aside>
 
         {/* ---------- Columna derecha: nueva nota SOAP ---------- */}
@@ -260,6 +299,19 @@ export default function PatientRecord({ patientId, appointmentId, onBack }) {
           </form>
         </section>
       </div>
+
+      {showRxModal && (
+        <PrescriptionModal
+          patientId={patientId}
+          consultationId={null}
+          doctorReady={doctorReady}
+          onOpenDoctorProfile={onOpenDoctorProfile}
+          onClose={() => {
+            setShowRxModal(false);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }

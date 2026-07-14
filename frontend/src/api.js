@@ -32,4 +32,16 @@ export const api = {
   cie11: {
     search: (q) => request(`/cie11?q=${encodeURIComponent(q)}`),
   },
+  medications: {
+    search: (q) => request(`/medications?q=${encodeURIComponent(q)}`),
+  },
+  doctorProfile: {
+    get: () => request(`/doctor-profile`),
+    update: (data) => request(`/doctor-profile`, { method: "PUT", body: JSON.stringify(data) }),
+  },
+  prescriptions: {
+    listByPatient: (patientId) => request(`/prescriptions/patient/${patientId}`),
+    create: (data) => request(`/prescriptions`, { method: "POST", body: JSON.stringify(data) }),
+    pdfUrl: (id) => `${BASE}/prescriptions/${id}/pdf`,
+  },
 };

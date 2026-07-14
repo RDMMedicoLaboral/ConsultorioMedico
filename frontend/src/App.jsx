@@ -4,6 +4,7 @@ import AgendaView from "./components/AgendaView.jsx";
 import PatientModal from "./components/PatientModal.jsx";
 import AppointmentModal from "./components/AppointmentModal.jsx";
 import PatientRecord from "./components/PatientRecord.jsx";
+import DoctorProfileModal from "./components/DoctorProfileModal.jsx";
 
 function todayISO() {
   const d = new Date();
@@ -31,6 +32,7 @@ export default function App() {
   const [showApptModal, setShowApptModal] = useState(false);
   const [search, setSearch] = useState("");
   const [record, setRecord] = useState(null); // { patientId, appointmentId } | null
+  const [showDoctorProfile, setShowDoctorProfile] = useState(false);
 
   const loadPatients = useCallback(async () => {
     setPatients(await api.patients.list());
@@ -99,6 +101,10 @@ export default function App() {
           ))}
           {filteredPatients.length === 0 && <li className="hint">Sin resultados.</li>}
         </ul>
+
+        <button className="btn-ghost full" onClick={() => setShowDoctorProfile(true)}>
+          Perfil del médico
+        </button>
       </aside>
 
       <main className="main">
@@ -106,6 +112,7 @@ export default function App() {
           <PatientRecord
             patientId={record.patientId}
             appointmentId={record.appointmentId}
+            onOpenDoctorProfile={() => setShowDoctorProfile(true)}
             onBack={() => {
               setRecord(null);
               loadAppointments(date);
@@ -168,6 +175,10 @@ export default function App() {
             loadAppointments(date);
           }}
         />
+      )}
+
+      {showDoctorProfile && (
+        <DoctorProfileModal onClose={() => setShowDoctorProfile(false)} onSaved={() => setShowDoctorProfile(false)} />
       )}
     </div>
   );

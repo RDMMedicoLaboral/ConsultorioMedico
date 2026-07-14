@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, "..", "agenda.db");
@@ -88,6 +89,52 @@ CREATE TABLE IF NOT EXISTS cie11_catalog (
   label TEXT NOT NULL
 );
 
+-- Catálogo LOCAL de ejemplo de medicamentos (vademécum simplificado), solo
+-- para demostrar el autocompletado del recetario. En producción conviene
+-- sustituirlo por un catálogo/vademécum completo y actualizado (regulador
+-- sanitario local o proveedor comercial).
+CREATE TABLE IF NOT EXISTS medications_catalog (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  generic_name TEXT NOT NULL,
+  commercial_names TEXT,     -- separados por coma
+  presentation TEXT NOT NULL -- ej. "Tabletas 500 mg"
+);
+
+-- Perfil del médico que emite las recetas (fila única, id = 1, hasta que
+-- exista login multiusuario).
+CREATE TABLE IF NOT EXISTS doctor_profile (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  full_name TEXT,
+  professional_license TEXT, -- cédula profesional
+  specialty TEXT,
+  clinic_name TEXT,
+  clinic_address TEXT,
+  clinic_phone TEXT
+);
+
+-- Recetas electrónicas. Los medicamentos se guardan como JSON (lista de
+-- {generic_name, commercial_name, presentation, dose, frequency, duration})
+-- porque son inmutables una vez emitida la receta (no deben cambiar aunque
+-- el catálogo se actualice después).
+CREATE TABLE IF NOT EXISTS prescriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  consultation_id INTEGER REFERENCES consultations(id) ON DELETE SET NULL,
+  qr_token TEXT NOT NULL UNIQUE,
+  items_json TEXT NOT NULL,
+  instructions TEXT,
+  doctor_name TEXT,
+  doctor_license TEXT,
+  doctor_specialty TEXT,
+  clinic_name TEXT,
+  clinic_address TEXT,
+  clinic_phone TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_qr ON prescriptions(qr_token);
+
 -- Bitácora de auditoría mínima (quién/cuándo/qué), tal como exige el
 -- documento fuente. En el MVP se registra desde las rutas.
 CREATE TABLE IF NOT EXISTS audit_log (
@@ -131,10 +178,47 @@ if (cie11SeedCount === 0) {
   insertMany(seed);
 }
 
+const medsSeedCount = db.prepare(`SELECT COUNT(*) AS n FROM medications_catalog`).get().n;
+if (medsSeedCount === 0) {
+  // Vademécum mínimo de ejemplo (NO exhaustivo, NO oficial) solo para
+  // demostrar el autocompletado del recetario.
+  const seed = [
+    ["Paracetamol", "Tempra, Tylenol", "Tabletas 500 mg"],
+    ["Paracetamol", "Tempra, Tylenol", "Jarabe 120 mg/5 ml"],
+    ["Ibuprofeno", "Advil, Motrin", "Tabletas 400 mg"],
+    ["Ibuprofeno", "Advil, Motrin", "Suspensión 100 mg/5 ml"],
+    ["Amoxicilina", "Amoxil", "Cápsulas 500 mg"],
+    ["Amoxicilina", "Amoxil", "Suspensión 250 mg/5 ml"],
+    ["Losartán", "Cozaar", "Tabletas 50 mg"],
+    ["Metformina", "Glucophage", "Tabletas 850 mg"],
+    ["Omeprazol", "Losec", "Cápsulas 20 mg"],
+    ["Loratadina", "Clarityne", "Tabletas 10 mg"],
+    ["Salbutamol", "Ventolin", "Inhalador 100 mcg"],
+    ["Diclofenaco", "Voltaren", "Tabletas 50 mg"],
+    ["Enalapril", "Renitec", "Tabletas 10 mg"],
+    ["Atorvastatina", "Lipitor", "Tabletas 20 mg"],
+    ["Cetirizina", "Zyrtec", "Tabletas 10 mg"],
+    ["Azitromicina", "Zithromax", "Tabletas 500 mg"],
+    ["Ácido acetilsalicílico", "Aspirina", "Tabletas 100 mg"],
+    ["Metamizol", "Neomelubrina", "Tabletas 500 mg"],
+    ["Dexametasona", "Decadron", "Tabletas 0.5 mg"],
+    ["Complejo B", "Neurobion", "Tabletas"],
+  ];
+  const insert = db.prepare(
+    `INSERT INTO medications_catalog (generic_name, commercial_names, presentation) VALUES (?, ?, ?)`
+  );
+  const insertMany = db.transaction((rows) => rows.forEach((r) => insert.run(...r)));
+  insertMany(seed);
+}
+
 export function logAudit({ actor = "sistema", action, entity, entityId, detail }) {
   db.prepare(
     `INSERT INTO audit_log (actor, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)`
   ).run(actor, action, entity, entityId ?? null, detail ? JSON.stringify(detail) : null);
+}
+
+export function newQrToken() {
+  return crypto.randomBytes(16).toString("hex");
 }
 
 export const VALID_STATUSES = [
