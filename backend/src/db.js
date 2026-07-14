@@ -51,6 +51,43 @@ CREATE TABLE IF NOT EXISTS appointments (
 CREATE INDEX IF NOT EXISTS idx_appointments_start_time ON appointments(start_time);
 CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);
 
+-- Notas de evolución, formato SOAP (Subjetivo / Objetivo / Análisis / Plan).
+-- Una fila = una consulta. Vinculada opcionalmente a la cita que la originó.
+CREATE TABLE IF NOT EXISTS consultations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL,
+  -- S: Subjetivo
+  subjective TEXT,
+  -- O: Objetivo (signos vitales)
+  blood_pressure TEXT,       -- ej. "120/80"
+  heart_rate INTEGER,        -- lpm
+  temperature_c REAL,
+  weight_kg REAL,
+  height_cm REAL,
+  bmi REAL,                  -- calculado: weight_kg / (height_cm/100)^2
+  -- A: Análisis / diagnóstico
+  diagnosis_code TEXT,       -- código CIE-11
+  diagnosis_label TEXT,      -- descripción del código
+  -- P: Plan
+  plan TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_consultations_patient ON consultations(patient_id);
+
+-- Catálogo LOCAL de ejemplo con formato de CIE-11 (código + descripción),
+-- solo para demostrar el flujo de autocompletado del buscador de diagnóstico.
+-- IMPORTANTE: estos códigos son ilustrativos. Antes de usar el sistema en un
+-- entorno clínico real, sustituir esta tabla por una integración con la API
+-- oficial de la OMS (ICD-11 API, https://icd.who.int/icdapi), que requiere
+-- credenciales propias y devuelve el catálogo vigente y completo.
+CREATE TABLE IF NOT EXISTS cie11_catalog (
+  code TEXT PRIMARY KEY,
+  label TEXT NOT NULL
+);
+
 -- Bitácora de auditoría mínima (quién/cuándo/qué), tal como exige el
 -- documento fuente. En el MVP se registra desde las rutas.
 CREATE TABLE IF NOT EXISTS audit_log (
@@ -63,6 +100,36 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+
+const cie11SeedCount = db.prepare(`SELECT COUNT(*) AS n FROM cie11_catalog`).get().n;
+if (cie11SeedCount === 0) {
+  // Catálogo mínimo de ejemplo (NO oficial) solo para demostrar el buscador.
+  const seed = [
+    ["5A11", "Diabetes mellitus tipo 2"],
+    ["5A10", "Diabetes mellitus tipo 1"],
+    ["BA00", "Hipertensión esencial"],
+    ["CA22", "Asma"],
+    ["8A80.0", "Migraña sin aura"],
+    ["MG30", "Fiebre, no especificada"],
+    ["MD90", "Dolor abdominal"],
+    ["ME84", "Cefalea"],
+    ["CA40", "Bronquitis aguda"],
+    ["1A00", "Cólera"],
+    ["1C62", "Infección de vías urinarias"],
+    ["DA63", "Gastritis"],
+    ["FA20", "Osteoartritis de rodilla"],
+    ["BD10", "Insuficiencia cardiaca"],
+    ["6A70", "Trastorno depresivo"],
+    ["6B00", "Trastorno de ansiedad generalizada"],
+    ["CA23", "Enfermedad pulmonar obstructiva crónica"],
+    ["EK90", "Dermatitis, no especificada"],
+    ["9A00", "Conjuntivitis"],
+    ["AB70", "Faringitis aguda"],
+  ];
+  const insert = db.prepare(`INSERT INTO cie11_catalog (code, label) VALUES (?, ?)`);
+  const insertMany = db.transaction((rows) => rows.forEach((r) => insert.run(...r)));
+  insertMany(seed);
+}
 
 export function logAudit({ actor = "sistema", action, entity, entityId, detail }) {
   db.prepare(

@@ -5,7 +5,7 @@ function formatTime(iso) {
   return d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function AgendaView({ appointments, loading, onChangeStatus }) {
+export default function AgendaView({ appointments, loading, onChangeStatus, onOpenRecord }) {
   if (loading) {
     return <p className="empty-state">Cargando agenda…</p>;
   }
@@ -54,6 +54,16 @@ export default function AgendaView({ appointments, loading, onChangeStatus }) {
                       {STATUS[s].label}
                     </button>
                   ))}
+                  <button className="btn-primary sm" onClick={() => onOpenRecord(appt.patient_id, appt.id)}>
+                    Iniciar consulta
+                  </button>
+                </div>
+              )}
+              {nextOptions.length === 0 && (
+                <div className="appt-actions">
+                  <button className="btn-ghost sm" onClick={() => onOpenRecord(appt.patient_id, appt.id)}>
+                    Ver expediente
+                  </button>
                 </div>
               )}
             </div>

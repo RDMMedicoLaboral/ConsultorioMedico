@@ -398,6 +398,10 @@ textarea {
   color: var(--ink-soft);
 }
 
+.patient-list li.clickable {
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -408,5 +412,225 @@ textarea {
   }
   .main {
     padding: 20px;
+  }
+}
+
+/* ---------- Expediente clínico ---------- */
+
+.record-shell {
+  max-width: 1000px;
+}
+
+.back-btn {
+  margin-bottom: 16px;
+}
+
+.record-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.patient-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 500;
+  margin: 4px 0 10px;
+}
+
+.id-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.id-list dt {
+  color: var(--ink-soft);
+}
+
+.id-list dd {
+  margin: 0;
+}
+
+.allergy-banner {
+  margin-top: 12px;
+  background: #fbe9e7;
+  color: var(--allergy);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 10px;
+  border-radius: 7px;
+}
+
+.chronic-note {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.history-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1rem;
+  margin: 22px 0 10px;
+  color: var(--ink-soft);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.history-card {
+  padding-top: 16px;
+}
+
+.history-date {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.history-dx {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.history-field {
+  font-size: 0.83rem;
+  margin-top: 3px;
+  color: var(--ink);
+}
+
+.cie-code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.record-note {
+  position: sticky;
+  top: 20px;
+}
+
+.soap-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.soap-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.soap-letter {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.soap-block textarea,
+.soap-block input {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.vitals-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.diagnosis-search {
+  position: relative;
+}
+
+.diagnosis-search input {
+  width: 100%;
+}
+
+.cie-code-badge {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+}
+
+.diagnosis-dropdown {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.diagnosis-dropdown li {
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.diagnosis-dropdown li:hover {
+  background: var(--accent-soft);
+}
+
+.saved-msg {
+  color: var(--accent);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.btn-primary.sm,
+.btn-ghost.sm {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 860px) {
+  .record-grid {
+    grid-template-columns: 1fr;
+  }
+  .record-note {
+    position: static;
   }
 }

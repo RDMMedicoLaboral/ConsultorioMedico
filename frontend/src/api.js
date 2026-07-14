@@ -16,6 +16,7 @@ async function request(path, options = {}) {
 export const api = {
   patients: {
     list: (q) => request(`/patients${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+    get: (id) => request(`/patients/${id}`),
     create: (data) => request(`/patients`, { method: "POST", body: JSON.stringify(data) }),
   },
   appointments: {
@@ -23,5 +24,12 @@ export const api = {
     create: (data) => request(`/appointments`, { method: "POST", body: JSON.stringify(data) }),
     setStatus: (id, status) =>
       request(`/appointments/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  },
+  consultations: {
+    listByPatient: (patientId) => request(`/patients/${patientId}/consultations`),
+    create: (data) => request(`/consultations`, { method: "POST", body: JSON.stringify(data) }),
+  },
+  cie11: {
+    search: (q) => request(`/cie11?q=${encodeURIComponent(q)}`),
   },
 };

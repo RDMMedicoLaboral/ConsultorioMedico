@@ -3,6 +3,8 @@ import cors from "cors";
 import "./db.js"; // inicializa el esquema al arrancar
 import { patientsRouter } from "./routes/patients.js";
 import { appointmentsRouter } from "./routes/appointments.js";
+import { consultationsRouter } from "./routes/consultations.js";
+import { cie11Router } from "./routes/cie11.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -21,6 +23,8 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.use("/api/patients", patientsRouter);
 app.use("/api/appointments", appointmentsRouter);
+app.use("/api/cie11", cie11Router);
+app.use("/api", consultationsRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

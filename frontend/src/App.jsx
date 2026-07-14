@@ -3,6 +3,7 @@ import { api } from "./api.js";
 import AgendaView from "./components/AgendaView.jsx";
 import PatientModal from "./components/PatientModal.jsx";
 import AppointmentModal from "./components/AppointmentModal.jsx";
+import PatientRecord from "./components/PatientRecord.jsx";
 
 function todayISO() {
   const d = new Date();
@@ -29,6 +30,7 @@ export default function App() {
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [showApptModal, setShowApptModal] = useState(false);
   const [search, setSearch] = useState("");
+  const [record, setRecord] = useState(null); // { patientId, appointmentId } | null
 
   const loadPatients = useCallback(async () => {
     setPatients(await api.patients.list());
@@ -88,7 +90,7 @@ export default function App() {
 
         <ul className="patient-list">
           {filteredPatients.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="clickable" onClick={() => setRecord({ patientId: p.id, appointmentId: null })}>
               <span>
                 {p.first_name} {p.last_name}
               </span>
@@ -100,28 +102,46 @@ export default function App() {
       </aside>
 
       <main className="main">
-        <header className="agenda-header">
-          <div className="date-nav">
-            <button className="btn-ghost icon" onClick={() => setDate((d) => shiftDate(d, -1))}>
-              ‹
-            </button>
-            <div className="date-label">
-              <div className="date-title">{formatHeaderDate(date)}</div>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <button className="btn-ghost icon" onClick={() => setDate((d) => shiftDate(d, 1))}>
-              ›
-            </button>
-            <button className="btn-ghost" onClick={() => setDate(todayISO())}>
-              Hoy
-            </button>
-          </div>
-          <button className="btn-primary" onClick={() => setShowApptModal(true)}>
-            + Nueva cita
-          </button>
-        </header>
+        {record ? (
+          <PatientRecord
+            patientId={record.patientId}
+            appointmentId={record.appointmentId}
+            onBack={() => {
+              setRecord(null);
+              loadAppointments(date);
+            }}
+          />
+        ) : (
+          <>
+            <header className="agenda-header">
+              <div className="date-nav">
+                <button className="btn-ghost icon" onClick={() => setDate((d) => shiftDate(d, -1))}>
+                  ‹
+                </button>
+                <div className="date-label">
+                  <div className="date-title">{formatHeaderDate(date)}</div>
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                </div>
+                <button className="btn-ghost icon" onClick={() => setDate((d) => shiftDate(d, 1))}>
+                  ›
+                </button>
+                <button className="btn-ghost" onClick={() => setDate(todayISO())}>
+                  Hoy
+                </button>
+              </div>
+              <button className="btn-primary" onClick={() => setShowApptModal(true)}>
+                + Nueva cita
+              </button>
+            </header>
 
-        <AgendaView appointments={appointments} loading={loading} onChangeStatus={handleStatusChange} />
+            <AgendaView
+              appointments={appointments}
+              loading={loading}
+              onChangeStatus={handleStatusChange}
+              onOpenRecord={(patientId, appointmentId) => setRecord({ patientId, appointmentId })}
+            />
+          </>
+        )}
       </main>
 
       {showPatientModal && (
