@@ -8,6 +8,7 @@ import DoctorProfileModal from "./components/DoctorProfileModal.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import UsersModal from "./components/UsersModal.jsx";
 import ReminderSettingsModal from "./components/ReminderSettingsModal.jsx";
+import Footer from "./components/Footer.jsx";
 
 function todayISO() {
   const d = new Date();
@@ -132,7 +133,7 @@ export default function App() {
         <div className="brand">
           <span className="brand-mark">Rx</span>
           <div>
-            <div className="brand-name">Consultorio</div>
+            <div className="brand-name"><span className="brand-medic">Medic</span><span className="brand-os">Os</span></div>
             <div className="brand-sub">Expediente &amp; Agenda</div>
           </div>
         </div>
@@ -270,6 +271,8 @@ export default function App() {
       {showUsers && isMedico && <UsersModal onClose={() => setShowUsers(false)} />}
 
       {showReminders && isMedico && <ReminderSettingsModal onClose={() => setShowReminders(false)} />}
+
+      <Footer />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, setToken } from "../api.js";
+import Footer from "./Footer.jsx";
 
 export default function LoginScreen({ needsSetup, onAuthenticated }) {
   const [username, setUsername] = useState("");
@@ -32,7 +33,7 @@ export default function LoginScreen({ needsSetup, onAuthenticated }) {
         <div className="brand" style={{ marginBottom: 18 }}>
           <span className="brand-mark">Rx</span>
           <div>
-            <div className="brand-name">Consultorio</div>
+            <div className="brand-name"><span className="brand-medic">Medic</span><span className="brand-os">Os</span></div>
             <div className="brand-sub">Expediente &amp; Agenda</div>
           </div>
         </div>
@@ -74,6 +75,7 @@ export default function LoginScreen({ needsSetup, onAuthenticated }) {
           </div>
         </form>
       </div>
+      <Footer />
     </div>
   );
 }
