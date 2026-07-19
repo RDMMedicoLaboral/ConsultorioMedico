@@ -10,6 +10,41 @@ export const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
+// ---------- Migración de esquema (una sola vez) ----------
+// Este proyecto pasó de "un solo consultorio" a "multi-clínica" (columna
+// clinic_id en varias tablas). No hay lógica de migración incremental
+// (ALTER TABLE) para el MVP: si detectamos que existe una base de datos
+// con el esquema VIEJO (tabla `patients` sin la columna `clinic_id`),
+// simplemente la reiniciamos por completo. Esto es seguro porque, en esta
+// etapa, solo hay datos de prueba — nunca se usó con pacientes reales.
+// Si en el futuro hay datos reales que proteger, esto debe reemplazarse
+// por migraciones explícitas (o por la migración a PostgreSQL ya prevista
+// en el README).
+function needsFullReset() {
+  const tableExists = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='patients'`)
+    .get();
+  if (!tableExists) return false;
+  const columns = db.prepare(`PRAGMA table_info(patients)`).all();
+  const hasClinicId = columns.some((c) => c.name === "clinic_id");
+  return !hasClinicId;
+}
+
+if (needsFullReset()) {
+  console.warn(
+    "[db] Detectado esquema anterior a multi-clínica (sin clinic_id). " +
+      "Reiniciando la base de datos por completo (solo afecta datos de prueba)."
+  );
+  const oldTables = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`)
+    .all();
+  db.pragma("foreign_keys = OFF");
+  for (const { name } of oldTables) {
+    db.exec(`DROP TABLE IF EXISTS "${name}"`);
+  }
+  db.pragma("foreign_keys = ON");
+}
+
 // NOTA: Para producción, migrar a PostgreSQL (recomendado en el documento
 // original) por el cifrado en reposo (AES-256), backups gestionados y
 // concurrencia. El esquema de abajo es intencionalmente compatible con
