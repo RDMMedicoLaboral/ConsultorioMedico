@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import DiagnosisSearch from "./DiagnosisSearch.jsx";
 import PrescriptionModal from "./PrescriptionModal.jsx";
 import CertificateModal from "./CertificateModal.jsx";
+import PatientModal from "./PatientModal.jsx";
 
 const EMPTY_NOTE = {
   subjective: "",
@@ -48,6 +49,10 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
   const [doctorReady, setDoctorReady] = useState(true);
   const [showRxModal, setShowRxModal] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
+  const [editingRx, setEditingRx] = useState(null);
+  const [editingCert, setEditingCert] = useState(null);
+  const [showEditPatient, setShowEditPatient] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState(EMPTY_NOTE);
   const [saving, setSaving] = useState(false);
@@ -83,24 +88,53 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
   const set = (field) => (e) => setNote({ ...note, [field]: e.target.value });
   const bmi = computeBmi(note.weight_kg, note.height_cm);
 
+  function startEditNote(c) {
+    setEditingNoteId(c.id);
+    setNote({
+      subjective: c.subjective || "",
+      blood_pressure: c.blood_pressure || "",
+      heart_rate: c.heart_rate ?? "",
+      temperature_c: c.temperature_c ?? "",
+      weight_kg: c.weight_kg ?? "",
+      height_cm: c.height_cm ?? "",
+      diagnosis_code: c.diagnosis_code || "",
+      diagnosis_label: c.diagnosis_label || "",
+      plan: c.plan || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEditNote() {
+    setEditingNoteId(null);
+    setNote(EMPTY_NOTE);
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     setError(null);
     setSaving(true);
+    const payload = {
+      subjective: note.subjective || null,
+      blood_pressure: note.blood_pressure || null,
+      heart_rate: note.heart_rate ? Number(note.heart_rate) : null,
+      temperature_c: note.temperature_c ? Number(note.temperature_c) : null,
+      weight_kg: note.weight_kg ? Number(note.weight_kg) : null,
+      height_cm: note.height_cm ? Number(note.height_cm) : null,
+      diagnosis_code: note.diagnosis_code || null,
+      diagnosis_label: note.diagnosis_label || null,
+      plan: note.plan || null,
+    };
     try {
-      await api.consultations.create({
-        patient_id: patientId,
-        appointment_id: appointmentId ?? null,
-        subjective: note.subjective || null,
-        blood_pressure: note.blood_pressure || null,
-        heart_rate: note.heart_rate ? Number(note.heart_rate) : null,
-        temperature_c: note.temperature_c ? Number(note.temperature_c) : null,
-        weight_kg: note.weight_kg ? Number(note.weight_kg) : null,
-        height_cm: note.height_cm ? Number(note.height_cm) : null,
-        diagnosis_code: note.diagnosis_code || null,
-        diagnosis_label: note.diagnosis_label || null,
-        plan: note.plan || null,
-      });
+      if (editingNoteId) {
+        await api.consultations.update(editingNoteId, payload);
+        setEditingNoteId(null);
+      } else {
+        await api.consultations.create({
+          patient_id: patientId,
+          appointment_id: appointmentId ?? null,
+          ...payload,
+        });
+      }
       setNote(EMPTY_NOTE);
       setSavedMsg(true);
       setTimeout(() => setSavedMsg(false), 2500);
@@ -127,9 +161,19 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
         <aside className="record-history">
           <div className="folder-card">
             <div className="modal-tab" style={{ background: "#3D6B5C" }} />
-            <h2 className="patient-title">
-              {patient.first_name} {patient.last_name}
-            </h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+              <h2 className="patient-title">
+                {patient.first_name} {patient.last_name}
+              </h2>
+              <button type="button" className="link-btn" onClick={() => setShowEditPatient(true)}>
+                Editar
+              </button>
+            </div>
+            {patient.clinical_history_number && (
+              <div className="hint" style={{ marginTop: -6, marginBottom: 6 }}>
+                HC #{patient.clinical_history_number}
+              </div>
+            )}
             <dl className="id-list">
               {patient.birth_date && (
                 <>
@@ -209,6 +253,9 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
                     </div>
                   )}
                   {c.plan && <div className="history-field"><strong>P:</strong> {c.plan}</div>}
+                  <button type="button" className="link-btn" onClick={() => startEditNote(c)} style={{ marginTop: 6 }}>
+                    Editar
+                  </button>
                 </li>
               ))}
             </ol>
@@ -241,6 +288,10 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
                   >
                     Ver PDF
                   </a>
+                  {" · "}
+                  <button type="button" className="link-btn" onClick={() => setEditingRx(rx)}>
+                    Editar
+                  </button>
                 </li>
               ))}
             </ul>
@@ -277,6 +328,10 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
                   >
                     Ver PDF
                   </a>
+                  {" · "}
+                  <button type="button" className="link-btn" onClick={() => setEditingCert(cert)}>
+                    Editar
+                  </button>
                 </li>
               ))}
             </ul>
@@ -286,7 +341,9 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
         {/* ---------- Columna derecha: nueva nota SOAP ---------- */}
         <section className="record-note folder-card">
           <div className="modal-tab" style={{ background: "#C08A3E" }} />
-          <h3 className="modal-title">Nueva nota de evolución (SOAP)</h3>
+          <h3 className="modal-title">
+            {editingNoteId ? "Editar nota de evolución (SOAP)" : "Nueva nota de evolución (SOAP)"}
+          </h3>
 
           <form onSubmit={handleSave} className="soap-form">
             <label className="soap-block">
@@ -330,7 +387,7 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
             </div>
 
             <label className="soap-block">
-              <span className="soap-letter">A · Análisis (diagnóstico, CIE-11)</span>
+              <span className="soap-letter">A · Análisis (diagnóstico, CIE-10)</span>
               <DiagnosisSearch
                 code={note.diagnosis_code}
                 label={note.diagnosis_label}
@@ -350,37 +407,59 @@ export default function PatientRecord({ patientId, appointmentId, onOpenDoctorPr
 
             {error && <p className="form-error">{error}</p>}
             {savedMsg && <p className="saved-msg">✓ Nota guardada.</p>}
+            {editingNoteId && <p className="hint">Editando una nota existente.</p>}
 
             <div className="modal-actions">
+              {editingNoteId && (
+                <button type="button" className="btn-ghost" onClick={cancelEditNote}>
+                  Cancelar edición
+                </button>
+              )}
               <button type="submit" className="btn-primary" disabled={saving}>
-                {saving ? "Guardando…" : "Guardar nota"}
+                {saving ? "Guardando…" : editingNoteId ? "Actualizar nota" : "Guardar nota"}
               </button>
             </div>
           </form>
         </section>
       </div>
 
-      {showRxModal && (
+      {(showRxModal || editingRx) && (
         <PrescriptionModal
           patientId={patientId}
           consultationId={null}
+          existing={editingRx}
           doctorReady={doctorReady}
           onOpenDoctorProfile={onOpenDoctorProfile}
           onClose={() => {
             setShowRxModal(false);
+            setEditingRx(null);
             load();
           }}
         />
       )}
 
-      {showCertModal && (
+      {(showCertModal || editingCert) && (
         <CertificateModal
           patientId={patientId}
           consultationId={null}
+          existing={editingCert}
           doctorReady={doctorReady}
           onOpenDoctorProfile={onOpenDoctorProfile}
           onClose={() => {
             setShowCertModal(false);
+            setEditingCert(null);
+            load();
+          }}
+        />
+      )}
+
+      {showEditPatient && (
+        <PatientModal
+          isMedico={true}
+          patient={patient}
+          onClose={() => setShowEditPatient(false)}
+          onUpdated={() => {
+            setShowEditPatient(false);
             load();
           }}
         />
