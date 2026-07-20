@@ -319,33 +319,138 @@ ensureColumn("patients", "address", "TEXT");
 ensureColumn("patients", "workplace", "TEXT");                // institución o empresa
 ensureColumn("patients", "job_title", "TEXT");                // puesto de trabajo
 ensureColumn("patients", "clinical_history_number", "TEXT");
+ensureColumn("prescriptions", "updated_at", "TEXT");
+ensureColumn("certificates", "updated_at", "TEXT");
 
-const cie11SeedCount = db.prepare(`SELECT COUNT(*) AS n FROM cie11_catalog`).get().n;
-if (cie11SeedCount === 0) {
-  // Catálogo mínimo de ejemplo (NO oficial) solo para demostrar el buscador.
+// Catálogo de diagnósticos CIE-10 (el sistema que realmente se usa en los
+// certificados médicos, recetas e historias clínicas en la práctica —
+// CIE-11 es el estándar más nuevo de la OMS pero aún no es de uso común en
+// el papeleo clínico del día a día). Es un catálogo de ejemplo con más de
+// 100 diagnósticos comunes, NO oficial ni exhaustivo. Antes de usarlo en
+// un entorno clínico real a gran escala, conviene sustituirlo por un
+// catálogo CIE-10 completo y vigente (hay varios de dominio público).
+// Se siembra con INSERT OR IGNORE (no solo la primera vez) para que
+// cualquier código nuevo que se agregue aquí en el futuro se sume al
+// catálogo existente sin duplicar ni perder nada.
+{
   const seed = [
-    ["5A11", "Diabetes mellitus tipo 2"],
-    ["5A10", "Diabetes mellitus tipo 1"],
-    ["BA00", "Hipertensión esencial"],
-    ["CA22", "Asma"],
-    ["8A80.0", "Migraña sin aura"],
-    ["MG30", "Fiebre, no especificada"],
-    ["MD90", "Dolor abdominal"],
-    ["ME84", "Cefalea"],
-    ["CA40", "Bronquitis aguda"],
-    ["1A00", "Cólera"],
-    ["1C62", "Infección de vías urinarias"],
-    ["DA63", "Gastritis"],
-    ["FA20", "Osteoartritis de rodilla"],
-    ["BD10", "Insuficiencia cardiaca"],
-    ["6A70", "Trastorno depresivo"],
-    ["6B00", "Trastorno de ansiedad generalizada"],
-    ["CA23", "Enfermedad pulmonar obstructiva crónica"],
-    ["EK90", "Dermatitis, no especificada"],
-    ["9A00", "Conjuntivitis"],
-    ["AB70", "Faringitis aguda"],
+    // Infecciosas / parasitarias
+    ["A09", "Diarrea y gastroenteritis de presunto origen infeccioso"],
+    ["A09.1", "Diarrea y gastroenteritis de origen infeccioso"],
+    ["A15", "Tuberculosis respiratoria"],
+    ["A90", "Dengue"],
+    ["B01", "Varicela"],
+    ["B02", "Herpes zóster"],
+    ["B34.9", "Infección viral, no especificada"],
+    ["B86", "Escabiosis"],
+    // Neoplasias (comunes en consulta)
+    ["D12", "Pólipo del colon"],
+    ["D50", "Anemia por deficiencia de hierro"],
+    // Endocrinas / metabólicas
+    ["E03.9", "Hipotiroidismo, no especificado"],
+    ["E05.9", "Hipertiroidismo, no especificado"],
+    ["E10", "Diabetes mellitus tipo 1"],
+    ["E11", "Diabetes mellitus tipo 2"],
+    ["E66.9", "Obesidad, no especificada"],
+    ["E78.5", "Hiperlipidemia, no especificada"],
+    // Mentales / conductuales
+    ["F32.9", "Episodio depresivo, no especificado"],
+    ["F41.1", "Trastorno de ansiedad generalizada"],
+    ["F41.9", "Trastorno de ansiedad, no especificado"],
+    ["F43.1", "Trastorno de estrés postraumático"],
+    ["F51.0", "Insomnio no orgánico"],
+    // Sistema nervioso
+    ["G43.9", "Migraña, no especificada"],
+    ["G44.2", "Cefalea tensional"],
+    ["G47.0", "Trastornos del inicio y mantenimiento del sueño"],
+    // Ojo / oído
+    ["H10.9", "Conjuntivitis, no especificada"],
+    ["H60.9", "Otitis externa, no especificada"],
+    ["H66.9", "Otitis media, no especificada"],
+    ["H81.0", "Enfermedad de Ménière"],
+    // Circulatorias
+    ["I10", "Hipertensión esencial (primaria)"],
+    ["I20.9", "Angina de pecho, no especificada"],
+    ["I25.9", "Enfermedad isquémica crónica del corazón"],
+    ["I48", "Fibrilación y aleteo auricular"],
+    ["I50.9", "Insuficiencia cardíaca, no especificada"],
+    ["I83.9", "Várices de miembros inferiores"],
+    // Respiratorias
+    ["J00", "Rinofaringitis aguda (resfriado común)"],
+    ["J01.9", "Sinusitis aguda, no especificada"],
+    ["J02.9", "Faringitis aguda, no especificada"],
+    ["J03.9", "Amigdalitis aguda, no especificada"],
+    ["J06.9", "Infección aguda de las vías respiratorias superiores"],
+    ["J11.1", "Influenza con otras manifestaciones respiratorias"],
+    ["J18.9", "Neumonía, no especificada"],
+    ["J20.9", "Bronquitis aguda, no especificada"],
+    ["J30.4", "Rinitis alérgica, no especificada"],
+    ["J35.0", "Amigdalitis crónica"],
+    ["J40", "Bronquitis, no especificada como aguda o crónica"],
+    ["J44.9", "Enfermedad pulmonar obstructiva crónica, no especificada"],
+    ["J45.9", "Asma, no especificada"],
+    // Digestivas
+    ["K02.9", "Caries dental, no especificada"],
+    ["K21.0", "Enfermedad por reflujo gastroesofágico con esofagitis"],
+    ["K21.9", "Enfermedad por reflujo gastroesofágico sin esofagitis"],
+    ["K29.7", "Gastritis, no especificada"],
+    ["K30", "Dispepsia funcional"],
+    ["K35.8", "Apendicitis aguda, otra y no especificada"],
+    ["K52.9", "Gastroenteritis y colitis no infecciosa"],
+    ["K59.0", "Estreñimiento"],
+    ["K59.1", "Diarrea funcional"],
+    ["K64.9", "Hemorroides, no especificadas"],
+    // Piel
+    ["L02.9", "Absceso cutáneo, no especificado"],
+    ["L03.9", "Celulitis, no especificada"],
+    ["L20.9", "Dermatitis atópica, no especificada"],
+    ["L23.9", "Dermatitis alérgica de contacto"],
+    ["L30.9", "Dermatitis, no especificada"],
+    ["L50.9", "Urticaria, no especificada"],
+    ["L70.0", "Acné vulgar"],
+    // Musculoesquelético
+    ["M25.5", "Dolor articular"],
+    ["M54.2", "Cervicalgia"],
+    ["M54.5", "Lumbago no especificado"],
+    ["M54.9", "Dorsalgia, no especificada"],
+    ["M17.9", "Gonartrosis (artrosis de rodilla), no especificada"],
+    ["M19.9", "Artrosis, no especificada"],
+    ["M79.1", "Mialgia"],
+    ["M79.7", "Fibromialgia"],
+    // Genitourinario
+    ["N30.9", "Cistitis, no especificada"],
+    ["N39.0", "Infección de vías urinarias, sitio no especificado"],
+    ["N20.0", "Cálculo del riñón"],
+    ["N76.0", "Vaginitis aguda"],
+    ["N40", "Hiperplasia de la próstata"],
+    // Embarazo / puerperio (uso frecuente en certificados de reposo)
+    ["O21.0", "Hiperémesis gravídica leve"],
+    ["O26.9", "Atención por afección relacionada con el embarazo"],
+    ["Z34.9", "Supervisión de embarazo normal"],
+    // Síntomas y signos (muy usados en certificados)
+    ["R05", "Tos"],
+    ["R06.0", "Disnea"],
+    ["R10.4", "Dolor abdominal, otro y no especificado"],
+    ["R11", "Náusea y vómito"],
+    ["R42", "Mareo y desvanecimiento"],
+    ["R50.9", "Fiebre, no especificada"],
+    ["R51", "Cefalea"],
+    ["R53", "Malestar y fatiga"],
+    // Traumatismos / causas externas
+    ["S00.9", "Traumatismo superficial de la cabeza"],
+    ["S06.0", "Conmoción cerebral"],
+    ["S13.4", "Esguince cervical"],
+    ["S60.9", "Traumatismo superficial de la muñeca y de la mano"],
+    ["S93.4", "Esguince de tobillo"],
+    ["T14.9", "Traumatismo, no especificado"],
+    // Factores que influyen en el estado de salud (chequeos, controles)
+    ["Z00.0", "Examen médico general"],
+    ["Z01.0", "Examen de ojos y de la visión"],
+    ["Z23", "Necesidad de inmunización, dosis única"],
+    ["Z71.1", "Consulta por preocupación de enfermedad no confirmada"],
+    ["Z76.3", "Acompañante de persona enferma"],
   ];
-  const insert = db.prepare(`INSERT INTO cie11_catalog (code, label) VALUES (?, ?)`);
+  const insert = db.prepare(`INSERT OR IGNORE INTO cie11_catalog (code, label) VALUES (?, ?)`);
   const insertMany = db.transaction((rows) => rows.forEach((r) => insert.run(...r)));
   insertMany(seed);
 }
