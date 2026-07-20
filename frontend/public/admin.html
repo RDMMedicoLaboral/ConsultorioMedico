@@ -59,6 +59,27 @@
       <div class="hint" id="usernameHint" style="font-size:0.75rem; color:var(--ink-soft); margin-top:4px;"></div>
       <label for="password">Contraseña temporal</label>
       <input id="password" type="text" placeholder="Mínimo 6 caracteres" />
+
+      <details style="margin-top:14px;">
+        <summary style="cursor:pointer; font-size:0.85rem; color:var(--ink-soft);">
+          Datos opcionales del médico (quedan pre-llenados en "Perfil del médico"; él puede editarlos después)
+        </summary>
+        <label for="personalId">C.I. (cédula personal)</label>
+        <input id="personalId" />
+        <label for="license">Cédula profesional / Reg. SENESCYT</label>
+        <input id="license" />
+        <label for="specialty">Especialidad</label>
+        <input id="specialty" placeholder="Medicina General" />
+        <label for="docEmail">Correo electrónico</label>
+        <input id="docEmail" type="email" />
+        <label for="clinicAddress">Dirección del consultorio</label>
+        <input id="clinicAddress" />
+        <label for="clinicPhone">Teléfono del consultorio</label>
+        <input id="clinicPhone" />
+        <label for="city">Ciudad (lugar de emisión de certificados)</label>
+        <input id="city" placeholder="Manta" />
+      </details>
+
       <button onclick="createClinic()">Crear consultorio</button>
       <div id="createMsg"></div>
     </div>
@@ -149,13 +170,25 @@
     const full_name = document.getElementById('fullName').value.trim();
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value.trim();
+    const personal_id = document.getElementById('personalId').value.trim();
+    const professional_license = document.getElementById('license').value.trim();
+    const specialty = document.getElementById('specialty').value.trim();
+    const email = document.getElementById('docEmail').value.trim();
+    const clinic_address = document.getElementById('clinicAddress').value.trim();
+    const clinic_phone = document.getElementById('clinicPhone').value.trim();
+    const city = document.getElementById('city').value.trim();
     try {
-      const result = await api('/clinics', { method: 'POST', body: JSON.stringify({ clinic_name, full_name, username, password }) });
+      const result = await api('/clinics', {
+        method: 'POST',
+        body: JSON.stringify({
+          clinic_name, full_name, username, password,
+          personal_id, professional_license, specialty, email, clinic_address, clinic_phone, city,
+        }),
+      });
       showMsg('createMsg', `Listo. Comparte estos datos con el médico:\nUsuario: ${result.user.username}\nContraseña: ${password}`, true);
-      document.getElementById('clinicName').value = '';
-      document.getElementById('fullName').value = '';
-      document.getElementById('username').value = '';
-      document.getElementById('password').value = '';
+      ['clinicName','fullName','username','password','personalId','license','specialty','docEmail','clinicAddress','clinicPhone','city'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
       document.getElementById('usernameHint').textContent = '';
       usernameTouched = false;
       loadClinics();
