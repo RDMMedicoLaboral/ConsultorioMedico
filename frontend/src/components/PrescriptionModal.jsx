@@ -2,12 +2,17 @@ import { useState } from "react";
 import { api } from "../api.js";
 import MedicationSearch from "./MedicationSearch.jsx";
 
-export default function PrescriptionModal({ patientId, consultationId, doctorReady, onClose, onOpenDoctorProfile }) {
-  const [items, setItems] = useState([]);
-  const [instructions, setInstructions] = useState("");
+// existing: si se pasa una receta ya emitida (con .items), el modal edita
+// esa receta en vez de crear una nueva.
+export default function PrescriptionModal({ patientId, consultationId, existing = null, doctorReady, onClose, onOpenDoctorProfile }) {
+  const isEdit = Boolean(existing);
+  const [items, setItems] = useState(() =>
+    existing ? existing.items.map((it, i) => ({ key: `existing-${i}`, ...it })) : []
+  );
+  const [instructions, setInstructions] = useState(existing?.instructions || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [createdId, setCreatedId] = useState(null);
+  const [doneId, setDoneId] = useState(null);
 
   function addMedication(med) {
     setItems((prev) => [
@@ -41,13 +46,21 @@ export default function PrescriptionModal({ patientId, consultationId, doctorRea
     }
     setSaving(true);
     try {
-      const rx = await api.prescriptions.create({
-        patient_id: patientId,
-        consultation_id: consultationId ?? null,
-        items: items.map(({ key, ...rest }) => rest),
-        instructions,
-      });
-      setCreatedId(rx.id);
+      if (isEdit) {
+        await api.prescriptions.update(existing.id, {
+          items: items.map(({ key, ...rest }) => rest),
+          instructions,
+        });
+        setDoneId(existing.id);
+      } else {
+        const rx = await api.prescriptions.create({
+          patient_id: patientId,
+          consultation_id: consultationId ?? null,
+          items: items.map(({ key, ...rest }) => rest),
+          instructions,
+        });
+        setDoneId(rx.id);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -59,7 +72,7 @@ export default function PrescriptionModal({ patientId, consultationId, doctorRea
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal folder-card rx-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-tab" style={{ background: "#5B6B5F" }} />
-        <h2 className="modal-title">Nueva receta electrónica</h2>
+        <h2 className="modal-title">{isEdit ? "Editar receta electrónica" : "Nueva receta electrónica"}</h2>
 
         {!doctorReady && (
           <p className="hint rx-warning">
@@ -70,11 +83,11 @@ export default function PrescriptionModal({ patientId, consultationId, doctorRea
           </p>
         )}
 
-        {createdId ? (
+        {doneId ? (
           <div className="rx-success">
-            <p>✓ Receta generada correctamente.</p>
+            <p>✓ Receta {isEdit ? "actualizada" : "generada"} correctamente.</p>
             <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
-              <a className="btn-primary" href={api.prescriptions.pdfUrl(createdId)} target="_blank" rel="noreferrer">
+              <a className="btn-primary" href={api.prescriptions.pdfUrl(doneId)} target="_blank" rel="noreferrer">
                 Ver / descargar PDF
               </a>
               <button className="btn-ghost" onClick={onClose}>
@@ -137,7 +150,7 @@ export default function PrescriptionModal({ patientId, consultationId, doctorRea
                 Cancelar
               </button>
               <button type="submit" className="btn-primary" disabled={saving}>
-                {saving ? "Generando…" : "Generar receta"}
+                {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Generar receta"}
               </button>
             </div>
           </form>

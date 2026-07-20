@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api.js";
 
 const EMPTY = {
@@ -20,10 +20,22 @@ const EMPTY = {
   clinical_history_number: "",
 };
 
-export default function PatientModal({ isMedico = true, onClose, onCreated }) {
-  const [form, setForm] = useState(EMPTY);
+// patient: si se pasa, el modal edita ese paciente en vez de crear uno nuevo.
+export default function PatientModal({ isMedico = true, patient = null, onClose, onCreated, onUpdated }) {
+  const isEdit = Boolean(patient);
+  const [form, setForm] = useState(() => (patient ? { ...EMPTY, ...patient } : EMPTY));
+  const [historyPlaceholder, setHistoryPlaceholder] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Al crear un paciente nuevo, mostramos como sugerencia (placeholder, no
+  // valor forzado) el siguiente número de historia clínica de la clínica.
+  // Si el médico deja el campo vacío, el backend asigna ese mismo número al
+  // guardar; si escribe uno distinto, se respeta el que él ponga.
+  useEffect(() => {
+    if (isEdit) return;
+    api.patients.nextHistoryNumber().then(({ suggestion }) => setHistoryPlaceholder(suggestion));
+  }, [isEdit]);
 
   const set = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
@@ -36,8 +48,13 @@ export default function PatientModal({ isMedico = true, onClose, onCreated }) {
     }
     setSaving(true);
     try {
-      const patient = await api.patients.create(form);
-      onCreated(patient);
+      if (isEdit) {
+        const updated = await api.patients.update(patient.id, form);
+        onUpdated(updated);
+      } else {
+        const created = await api.patients.create(form);
+        onCreated(created);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -49,7 +66,7 @@ export default function PatientModal({ isMedico = true, onClose, onCreated }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal folder-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-tab" style={{ background: "#3D6B5C" }} />
-        <h2 className="modal-title">Nuevo paciente</h2>
+        <h2 className="modal-title">{isEdit ? "Editar paciente" : "Nuevo paciente"}</h2>
         <form onSubmit={handleSubmit} className="form-grid">
           <label>
             Nombre*
@@ -61,65 +78,74 @@ export default function PatientModal({ isMedico = true, onClose, onCreated }) {
           </label>
           <label>
             Fecha de nacimiento
-            <input type="date" value={form.birth_date} onChange={set("birth_date")} />
+            <input type="date" value={form.birth_date || ""} onChange={set("birth_date")} />
           </label>
           <label>
             Género
-            <input value={form.gender} onChange={set("gender")} placeholder="F / M / Otro" />
+            <select value={form.gender || ""} onChange={set("gender")}>
+              <option value="">Seleccionar…</option>
+              <option value="F">Femenino</option>
+              <option value="M">Masculino</option>
+              <option value="Otro">Otro</option>
+            </select>
           </label>
           <label>
             Teléfono
-            <input value={form.phone} onChange={set("phone")} />
+            <input value={form.phone || ""} onChange={set("phone")} />
           </label>
           <label>
             Correo
-            <input type="email" value={form.email} onChange={set("email")} />
+            <input type="email" value={form.email || ""} onChange={set("email")} />
           </label>
           <label>
             Contacto de emergencia
-            <input value={form.emergency_contact_name} onChange={set("emergency_contact_name")} />
+            <input value={form.emergency_contact_name || ""} onChange={set("emergency_contact_name")} />
           </label>
           <label>
             Teléfono de emergencia
-            <input value={form.emergency_contact_phone} onChange={set("emergency_contact_phone")} />
+            <input value={form.emergency_contact_phone || ""} onChange={set("emergency_contact_phone")} />
           </label>
           <label>
             Tipo de sangre
-            <input value={form.blood_type} onChange={set("blood_type")} placeholder="O+" />
+            <input value={form.blood_type || ""} onChange={set("blood_type")} placeholder="O+" />
           </label>
           <label>
             Número de cédula
-            <input value={form.id_number} onChange={set("id_number")} />
+            <input value={form.id_number || ""} onChange={set("id_number")} />
           </label>
           <label className="span-2">
             Dirección domiciliaria
-            <input value={form.address} onChange={set("address")} />
+            <input value={form.address || ""} onChange={set("address")} />
           </label>
           <label>
             Institución o empresa
-            <input value={form.workplace} onChange={set("workplace")} />
+            <input value={form.workplace || ""} onChange={set("workplace")} />
           </label>
           <label>
             Puesto de trabajo
-            <input value={form.job_title} onChange={set("job_title")} />
+            <input value={form.job_title || ""} onChange={set("job_title")} />
           </label>
           <label>
             Número de historia clínica
-            <input value={form.clinical_history_number} onChange={set("clinical_history_number")} />
+            <input
+              value={form.clinical_history_number || ""}
+              onChange={set("clinical_history_number")}
+              placeholder={isEdit ? "" : historyPlaceholder ? `Se asignará ${historyPlaceholder} si lo dejas vacío` : ""}
+            />
           </label>
           {isMedico && (
             <>
               <label className="span-2">
                 Alergias
                 <input
-                  value={form.allergies}
+                  value={form.allergies || ""}
                   onChange={set("allergies")}
                   placeholder="Ej. Penicilina — se mostrará como alerta roja"
                 />
               </label>
               <label className="span-2">
                 Enfermedades crónicas / antecedentes
-                <textarea rows={2} value={form.chronic_conditions} onChange={set("chronic_conditions")} />
+                <textarea rows={2} value={form.chronic_conditions || ""} onChange={set("chronic_conditions")} />
               </label>
             </>
           )}
@@ -131,7 +157,7 @@ export default function PatientModal({ isMedico = true, onClose, onCreated }) {
               Cancelar
             </button>
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? "Guardando…" : "Guardar paciente"}
+              {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Guardar paciente"}
             </button>
           </div>
         </form>

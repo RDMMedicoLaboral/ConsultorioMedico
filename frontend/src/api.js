@@ -54,6 +54,8 @@ export const api = {
     list: (q) => request(`/patients${q ? `?q=${encodeURIComponent(q)}` : ""}`),
     get: (id) => request(`/patients/${id}`),
     create: (data) => request(`/patients`, { method: "POST", body: JSON.stringify(data) }),
+    update: (id, data) => request(`/patients/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    nextHistoryNumber: () => request(`/patients/next-history-number`),
   },
   appointments: {
     listByDate: (date) => request(`/appointments?date=${date}`),
@@ -64,6 +66,7 @@ export const api = {
   consultations: {
     listByPatient: (patientId) => request(`/patients/${patientId}/consultations`),
     create: (data) => request(`/consultations`, { method: "POST", body: JSON.stringify(data) }),
+    update: (id, data) => request(`/consultations/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   },
   cie11: {
     search: (q) => request(`/cie11?q=${encodeURIComponent(q)}`),
@@ -77,12 +80,16 @@ export const api = {
   },
   prescriptions: {
     listByPatient: (patientId) => request(`/prescriptions/patient/${patientId}`),
+    get: (id) => request(`/prescriptions/${id}`),
     create: (data) => request(`/prescriptions`, { method: "POST", body: JSON.stringify(data) }),
+    update: (id, data) => request(`/prescriptions/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     pdfUrl: (id) => `${BASE}/prescriptions/${id}/pdf?token=${encodeURIComponent(getToken() || "")}`,
   },
   certificates: {
     listByPatient: (patientId) => request(`/certificates/patient/${patientId}`),
+    get: (id) => request(`/certificates/${id}`),
     create: (data) => request(`/certificates`, { method: "POST", body: JSON.stringify(data) }),
+    update: (id, data) => request(`/certificates/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     pdfUrl: (id) => `${BASE}/certificates/${id}/pdf?token=${encodeURIComponent(getToken() || "")}`,
   },
   reminders: {

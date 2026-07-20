@@ -20,18 +20,21 @@ const TYPE_OPTIONS = [
   { value: "teletrabajo", label: "Teletrabajo" },
 ];
 
-export default function CertificateModal({ patientId, consultationId, doctorReady, onClose, onOpenDoctorProfile }) {
-  const [diagnosisCode, setDiagnosisCode] = useState("");
-  const [diagnosisLabel, setDiagnosisLabel] = useState("");
-  const [clinicalPicture, setClinicalPicture] = useState("");
-  const [presentsSymptoms, setPresentsSymptoms] = useState(true);
-  const [certificateType, setCertificateType] = useState("enfermedad");
-  const [description, setDescription] = useState("");
-  const [dateFrom, setDateFrom] = useState(todayISO());
-  const [dateTo, setDateTo] = useState(todayISO());
+// existing: si se pasa un certificado ya emitido, el modal lo edita en vez
+// de crear uno nuevo.
+export default function CertificateModal({ patientId, consultationId, existing = null, doctorReady, onClose, onOpenDoctorProfile }) {
+  const isEdit = Boolean(existing);
+  const [diagnosisCode, setDiagnosisCode] = useState(existing?.diagnosis_code || "");
+  const [diagnosisLabel, setDiagnosisLabel] = useState(existing?.diagnosis_label || "");
+  const [clinicalPicture, setClinicalPicture] = useState(existing?.clinical_picture || "");
+  const [presentsSymptoms, setPresentsSymptoms] = useState(existing ? Boolean(existing.presents_symptoms) : true);
+  const [certificateType, setCertificateType] = useState(existing?.certificate_type || "enfermedad");
+  const [description, setDescription] = useState(existing?.description || "");
+  const [dateFrom, setDateFrom] = useState(existing?.date_from || todayISO());
+  const [dateTo, setDateTo] = useState(existing?.date_to || todayISO());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [createdId, setCreatedId] = useState(null);
+  const [doneId, setDoneId] = useState(null);
 
   const autoDays = daysBetweenInclusive(dateFrom, dateTo);
 
@@ -52,21 +55,25 @@ export default function CertificateModal({ patientId, consultationId, doctorRead
       return;
     }
     setSaving(true);
+    const payload = {
+      diagnosis_code: diagnosisCode || null,
+      diagnosis_label: diagnosisLabel,
+      clinical_picture: clinicalPicture || null,
+      presents_symptoms: presentsSymptoms,
+      certificate_type: certificateType,
+      description: description || null,
+      date_from: dateFrom,
+      date_to: dateTo,
+      days_granted: autoDays,
+    };
     try {
-      const cert = await api.certificates.create({
-        patient_id: patientId,
-        consultation_id: consultationId ?? null,
-        diagnosis_code: diagnosisCode || null,
-        diagnosis_label: diagnosisLabel,
-        clinical_picture: clinicalPicture || null,
-        presents_symptoms: presentsSymptoms,
-        certificate_type: certificateType,
-        description: description || null,
-        date_from: dateFrom,
-        date_to: dateTo,
-        days_granted: autoDays,
-      });
-      setCreatedId(cert.id);
+      if (isEdit) {
+        await api.certificates.update(existing.id, payload);
+        setDoneId(existing.id);
+      } else {
+        const cert = await api.certificates.create({ patient_id: patientId, consultation_id: consultationId ?? null, ...payload });
+        setDoneId(cert.id);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -78,7 +85,7 @@ export default function CertificateModal({ patientId, consultationId, doctorRead
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal folder-card rx-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-tab" style={{ background: "#2B5C8A" }} />
-        <h2 className="modal-title">Nuevo certificado médico</h2>
+        <h2 className="modal-title">{isEdit ? "Editar certificado médico" : "Nuevo certificado médico"}</h2>
 
         {!doctorReady && (
           <p className="hint rx-warning">
@@ -89,11 +96,11 @@ export default function CertificateModal({ patientId, consultationId, doctorRead
           </p>
         )}
 
-        {createdId ? (
+        {doneId ? (
           <div className="rx-success">
-            <p>✓ Certificado generado correctamente.</p>
+            <p>✓ Certificado {isEdit ? "actualizado" : "generado"} correctamente.</p>
             <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
-              <a className="btn-primary" href={api.certificates.pdfUrl(createdId)} target="_blank" rel="noreferrer">
+              <a className="btn-primary" href={api.certificates.pdfUrl(doneId)} target="_blank" rel="noreferrer">
                 Ver / descargar PDF
               </a>
               <button className="btn-ghost" onClick={onClose}>
@@ -104,7 +111,7 @@ export default function CertificateModal({ patientId, consultationId, doctorRead
         ) : (
           <form onSubmit={handleSubmit}>
             <label className="soap-block">
-              <span className="soap-letter">Diagnóstico (CIE-11)</span>
+              <span className="soap-letter">Diagnóstico (CIE-10)</span>
               <DiagnosisSearch
                 code={diagnosisCode}
                 label={diagnosisLabel}
@@ -177,7 +184,7 @@ export default function CertificateModal({ patientId, consultationId, doctorRead
                 Cancelar
               </button>
               <button type="submit" className="btn-primary" disabled={saving}>
-                {saving ? "Generando…" : "Generar certificado"}
+                {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Generar certificado"}
               </button>
             </div>
           </form>
