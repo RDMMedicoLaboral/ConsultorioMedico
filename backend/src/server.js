@@ -1,3 +1,4 @@
+import "dotenv/config";
 import "express-async-errors"; // permite que errores en handlers async lleguen al middleware de error sin try/catch manual en cada ruta
 import express from "express";
 import cors from "cors";
