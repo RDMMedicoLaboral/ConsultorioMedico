@@ -87,7 +87,7 @@
     <div class="card">
       <strong>Consultorios existentes</strong>
       <table id="clinicsTable">
-        <thead><tr><th>Nombre</th><th>Usuarios</th><th>Pacientes</th><th>Creado</th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Usuarios</th><th>Pacientes</th><th>Creado</th><th colspan="2"></th></tr></thead>
         <tbody id="clinicsBody"></tbody>
       </table>
     </div>
@@ -136,12 +136,24 @@
     body.innerHTML = rows.map(c => `
       <tr>
         <td>${c.name}</td>
+        <td><code>${c.doctor_username || '—'}</code></td>
         <td>${c.user_count}</td>
         <td>${c.patient_count}</td>
         <td>${new Date(c.created_at.replace(' ', 'T')).toLocaleDateString('es-MX')}</td>
+        <td><button class="secondary" onclick="resetPassword(${c.id}, '${c.name.replace(/'/g, "")}')">Restablecer contraseña</button></td>
         <td><button class="danger" onclick="deleteClinic(${c.id}, '${c.name.replace(/'/g, "")}')">Eliminar</button></td>
       </tr>
-    `).join('') || '<tr><td colspan="5">Todavía no hay consultorios.</td></tr>';
+    `).join('') || '<tr><td colspan="7">Todavía no hay consultorios.</td></tr>';
+  }
+
+  async function resetPassword(id, name) {
+    if (!confirm('¿Generar una contraseña nueva para el médico de "' + name + '"? La contraseña actual dejará de funcionar.')) return;
+    try {
+      const result = await api('/clinics/' + id + '/reset-password', { method: 'POST', body: JSON.stringify({}) });
+      alert('Nueva contraseña para ' + result.username + ':\n\n' + result.password + '\n\nCompártela con el médico ahora — no se volverá a mostrar.');
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
   }
 
   let usernameTouched = false;
